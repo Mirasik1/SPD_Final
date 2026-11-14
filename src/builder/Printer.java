@@ -1,5 +1,13 @@
 package builder;
 
+import factory.Filament;
+import observer.PrintObserver;
+import strategy.PrintStrategy;
+import strategy.StandardPrintStrategy;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class Printer {
     private final String modelName;
     private final double nozzleDiameter;
@@ -9,6 +17,9 @@ public class Printer {
     private final boolean hasEnclosure;
     private final boolean hasHardenedNozzle;
     private final String bedType;
+
+    private PrintStrategy currentStrategy;
+    private final List<PrintObserver> observers = new ArrayList<>();
 
     private Printer(PrinterBuilder builder){
         this.modelName = builder.getModelName();
@@ -50,6 +61,53 @@ public class Printer {
 
     public String getBedType() {
         return bedType;
+    }
+
+    public void setStrategy(PrintStrategy strategy) {
+        this.currentStrategy = strategy;
+    }
+
+    public void addObserver(PrintObserver observer) {
+        observers.add(observer);
+    }
+
+    public void removeObserver(PrintObserver observer) {
+        observers.remove(observer);
+    }
+
+    private void notifyObservers(String fileName, String status, double totalCost, double timeMinutes) {
+        for (PrintObserver observer : observers) {
+            observer.onPrintFinished(fileName, status, totalCost, timeMinutes);
+        }
+    }
+
+    public void performPrint(String filePath, Filament filament, double modelVolumeCm3) {
+        String fileName = filePath.substring(Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')) + 1);
+
+        // 1. compatibility checks
+        if (filament.getNozzleTemp() > maxNozzleTemp) {
+            System.out.println("ERROR: nozzle of " + modelName + " cannot reach "
+                    + filament.getNozzleTemp() + "°C for " + filament.getName());
+            notifyObservers(fileName, "FAILED", 0, 0);
+            return;
+        }
+        if (filament.getBedTemp() > maxBedTemp) {
+            System.out.println("ERROR: bed of " + modelName + " cannot reach "
+                    + filament.getBedTemp() + "°C for " + filament.getName());
+            notifyObservers(fileName, "FAILED", 0, 0);
+            return;
+        }
+        if (filament.isRequiresEnclosure() && !hasEnclosure) {
+            System.out.println("ERROR: " + filament.getName() + " requires an enclosure, "
+                    + modelName + " has none");
+            notifyObservers(fileName, "FAILED", 0, 0);
+            return;
+        }
+
+        // 2. default strategy
+        if (currentStrategy == null) {
+            currentStrategy = new StandardPrintStrategy();
+        }
     }
 
     @Override
