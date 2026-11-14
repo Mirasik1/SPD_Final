@@ -1,5 +1,7 @@
 import factory.*;
 import builder.*;
+import observer.*;
+import strategy.*;
 
 public class main {
     public static void main(String[] args) {
@@ -66,5 +68,19 @@ public class main {
 
         System.out.println("Printer has enclosure: "
                 + printer1.isHasEnclosure());
+        System.out.println("\n--- STRATEGY AND OBSERVER ---");
+
+        printer1.addObserver(new ConsoleNotificationObserver());
+        printer1.addObserver(new TelegramBotObserver());
+        printer1.addObserver(new SoundAlarmObserver());
+
+        printer1.setStrategy(new HighQualityPrintStrategy());
+        printer1.performPrint("models/vase.stl", abs, 120);
+
+        printer1.setStrategy(new FastPrintStrategy());
+        printer1.performPrint("models/bracket.stl", pla, 40);
+
+        printer2.addObserver(new ConsoleNotificationObserver());
+        printer2.performPrint("models/case.stl", abs, 80);
     }
 }
