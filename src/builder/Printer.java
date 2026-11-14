@@ -108,6 +108,25 @@ public class Printer {
         if (currentStrategy == null) {
             currentStrategy = new StandardPrintStrategy();
         }
+
+        // 3. time, weight and cost
+        double timeMinutes = modelVolumeCm3 * 6 * currentStrategy.getTimeMultiplier();
+        double weightGrams = modelVolumeCm3 * filament.getDensity();
+        double totalCost = weightGrams / 1000 * filament.getPricePerKg();
+
+        System.out.println("\nPrinter: " + modelName);
+        System.out.println("Mode: " + currentStrategy.getName()
+                + " (layer " + currentStrategy.getLayerHeightMm() + " mm)");
+        System.out.printf("Estimated time: %.1f min, filament: %.1f g, cost: %.2f%n",
+                timeMinutes, weightGrams, totalCost);
+
+        // 4. print simulation
+        System.out.println("Heating bed to " + filament.getBedTemp() + "°C...");
+        System.out.println("Heating nozzle to " + filament.getNozzleTemp() + "°C...");
+        System.out.println("Printing file " + filePath + "...");
+
+        // 5. notify subscribers
+        notifyObservers(fileName, "SUCCESS", totalCost, timeMinutes);
     }
 
     @Override
