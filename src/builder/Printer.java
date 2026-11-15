@@ -9,6 +9,7 @@ import strategy.StandardPrintStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Printer {
     private final String modelName;
@@ -21,6 +22,7 @@ public class Printer {
     private final String bedType;
 
     private PrintStrategy currentStrategy;
+    private final PrintCalculator calculator = new PrintCalculator();
     private final List<PrintObserver> observers = new ArrayList<>();
 
     private Printer(PrinterBuilder builder){
@@ -66,11 +68,11 @@ public class Printer {
     }
 
     public void setStrategy(PrintStrategy strategy) {
-        this.currentStrategy = strategy;
+        this.currentStrategy = Objects.requireNonNull(strategy, "Print strategy cannot be null");
     }
 
     public void addObserver(PrintObserver observer) {
-        observers.add(observer);
+        observers.add(Objects.requireNonNull(observer, "Print observer cannot be null"));
     }
 
     public void removeObserver(PrintObserver observer) {
@@ -95,53 +97,50 @@ public class Printer {
         }
         String fileName = filePath.substring(Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')) + 1);
 
-        // 1. compatibility checks
-        if (filament.getNozzleTemp() > maxNozzleTemp) {
-            System.out.println("ERROR: nozzle of " + modelName + " cannot reach "
-                    + filament.getNozzleTemp() + "°C for " + filament.getName());
+        String compatibilityError = getCompatibilityError(filament);
+        if (compatibilityError != null) {
+            System.out.println("ERROR: " + compatibilityError);
             notifyObservers(fileName, "FAILED", 0, 0);
             return;
+        }
+
+        PrintStrategy strategy = currentStrategy == null ? new StandardPrintStrategy() : currentStrategy;
+        PrintMetrics metrics = calculator.calculate(modelVolumeCm3, filament, strategy, config);
+        printEstimate(strategy, config, metrics);
+        simulatePrinting(filePath, filament);
+        notifyObservers(fileName, "SUCCESS", metrics.cost(), metrics.timeMinutes());
+    }
+
+    private String getCompatibilityError(Filament filament) {
+        if (filament.getNozzleTemp() > maxNozzleTemp) {
+            return "nozzle of " + modelName + " cannot reach "
+                    + filament.getNozzleTemp() + "°C for " + filament.getName();
         }
         if (filament.getBedTemp() > maxBedTemp) {
-            System.out.println("ERROR: bed of " + modelName + " cannot reach "
-                    + filament.getBedTemp() + "°C for " + filament.getName());
-            notifyObservers(fileName, "FAILED", 0, 0);
-            return;
+            return "bed of " + modelName + " cannot reach "
+                    + filament.getBedTemp() + "°C for " + filament.getName();
         }
         if (filament.isRequiresEnclosure() && !hasEnclosure) {
-            System.out.println("ERROR: " + filament.getName() + " requires an enclosure, "
-                    + modelName + " has none");
-            notifyObservers(fileName, "FAILED", 0, 0);
-            return;
+            return filament.getName() + " requires an enclosure, " + modelName + " has none";
         }
+        return null;
+    }
 
-        // 2. default strategy
-        if (currentStrategy == null) {
-            currentStrategy = new StandardPrintStrategy();
-        }
-
-        // 3. time, weight and cost
-        double timeMinutes = modelVolumeCm3 * 6 * currentStrategy.getTimeMultiplier()
-                * config.getTimeMultiplier();
-        double weightGrams = modelVolumeCm3 * filament.getDensity()
-                * config.getMaterialMultiplier();
-        double totalCost = weightGrams / 1000 * filament.getPricePerKg();
-
+    private void printEstimate(PrintStrategy strategy, PrintJobConfig config, PrintMetrics metrics) {
         System.out.println("\nPrinter: " + modelName);
-        System.out.println("Mode: " + currentStrategy.getName()
-                + " (layer " + currentStrategy.getLayerHeightMm() + " mm)");
+        System.out.println("Mode: " + strategy.getName()
+                + " (layer " + strategy.getLayerHeightMm() + " mm)");
         System.out.println("Settings: " + config.getDescription());
         System.out.printf("Estimated time: %.1f min, filament: %.1f g, cost: %.2f%n",
-                timeMinutes, weightGrams, totalCost);
+                metrics.timeMinutes(), metrics.weightGrams(), metrics.cost());
+    }
 
-        // 4. print simulation
+    private void simulatePrinting(String filePath, Filament filament) {
         System.out.println("Heating bed to " + filament.getBedTemp() + "°C...");
         System.out.println("Heating nozzle to " + filament.getNozzleTemp() + "°C...");
         System.out.println("Printing file " + filePath + "...");
-
-        // 5. notify subscribers
-        notifyObservers(fileName, "SUCCESS", totalCost, timeMinutes);
     }
+
 
     @Override
     public String toString() {
