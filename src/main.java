@@ -1,3 +1,5 @@
+import adapter.*;
+import decorator.*;
 import factory.*;
 import builder.*;
 import observer.*;
@@ -8,10 +10,14 @@ public class main {
 
         System.out.println("--- FACTORY PATTERN ---");
 
-        Filament pla = FilamentFactory.createFilament("PLA");
-        Filament petg = FilamentFactory.createFilament("PETG");
-        Filament abs = FilamentFactory.createFilament("ABS");
-        Filament tpu = FilamentFactory.createFilament("TPU");
+        System.out.println("--- ADAPTER PATTERN: EXTERNAL MARKETPLACE ---");
+        FilamentPriceProvider prices = new FilamentPriceAdapter(
+                new ExternalPriceService("http://127.0.0.1:8000"));
+
+        Filament pla = FilamentFactory.createFilament("PLA", prices);
+        Filament petg = FilamentFactory.createFilament("PETG", prices);
+        Filament abs = FilamentFactory.createFilament("ABS", prices);
+        Filament tpu = FilamentFactory.createFilament("TPU", prices);
 
         System.out.println(pla);
         System.out.println();
@@ -26,9 +32,7 @@ public class main {
 
 
 
-        pla.setPricePerKg(17.5);
-
-        System.out.println("\nUpdated PLA price: "
+        System.out.println("\nCurrent PLA price: "
                 + pla.getPricePerKg());
 
 
@@ -79,6 +83,13 @@ public class main {
 
         printer1.setStrategy(new FastPrintStrategy());
         printer1.performPrint("models/bracket.stl", pla, 40);
+
+        System.out.println("\n--- DECORATOR PATTERN: CUSTOM PRINT SETTINGS ---");
+        PrintJobConfig customSettings = new FineLayerDecorator(
+                new InfillDecorator(
+                        new SupportsDecorator(new BasePrintJobConfig())));
+        printer1.setStrategy(new StandardPrintStrategy());
+        printer1.performPrint("models/benchy.stl", pla, 50, customSettings);
 
         printer2.addObserver(new ConsoleNotificationObserver());
         printer2.performPrint("models/case.stl", abs, 80);

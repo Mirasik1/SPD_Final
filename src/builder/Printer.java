@@ -1,5 +1,7 @@
 package builder;
 
+import decorator.BasePrintJobConfig;
+import decorator.PrintJobConfig;
 import factory.Filament;
 import observer.PrintObserver;
 import strategy.PrintStrategy;
@@ -82,6 +84,15 @@ public class Printer {
     }
 
     public void performPrint(String filePath, Filament filament, double modelVolumeCm3) {
+        performPrint(filePath, filament, modelVolumeCm3, new BasePrintJobConfig());
+    }
+
+    public void performPrint(String filePath, Filament filament, double modelVolumeCm3,
+                             PrintJobConfig config) {
+        if (filePath == null || filePath.isBlank() || filament == null || config == null
+                || !Double.isFinite(modelVolumeCm3) || modelVolumeCm3 <= 0) {
+            throw new IllegalArgumentException("Print job requires a file, filament, positive volume and settings");
+        }
         String fileName = filePath.substring(Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\')) + 1);
 
         // 1. compatibility checks
@@ -110,13 +121,16 @@ public class Printer {
         }
 
         // 3. time, weight and cost
-        double timeMinutes = modelVolumeCm3 * 6 * currentStrategy.getTimeMultiplier();
-        double weightGrams = modelVolumeCm3 * filament.getDensity();
+        double timeMinutes = modelVolumeCm3 * 6 * currentStrategy.getTimeMultiplier()
+                * config.getTimeMultiplier();
+        double weightGrams = modelVolumeCm3 * filament.getDensity()
+                * config.getMaterialMultiplier();
         double totalCost = weightGrams / 1000 * filament.getPricePerKg();
 
         System.out.println("\nPrinter: " + modelName);
         System.out.println("Mode: " + currentStrategy.getName()
                 + " (layer " + currentStrategy.getLayerHeightMm() + " mm)");
+        System.out.println("Settings: " + config.getDescription());
         System.out.printf("Estimated time: %.1f min, filament: %.1f g, cost: %.2f%n",
                 timeMinutes, weightGrams, totalCost);
 
