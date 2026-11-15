@@ -91,7 +91,27 @@ public class main {
         printer1.setStrategy(new StandardPrintStrategy());
         printer1.performPrint("models/benchy.stl", pla, 50, customSettings);
 
+        System.out.println("\n--- PRINT CALCULATION CHECKS ---");
+        PrintCalculator calculator = new PrintCalculator();
+        PrintMetrics base = calculator.calculate(50, pla, new StandardPrintStrategy(), new BasePrintJobConfig());
+        PrintMetrics decorated = calculator.calculate(50, pla, new StandardPrintStrategy(), customSettings);
+        double expectedBaseWeight = 50 * pla.getDensity();
+        double expectedDecoratedWeight = expectedBaseWeight * 1.20 * 1.30;
+        verify("Standard time", 300, base.timeMinutes());
+        verify("Standard material", expectedBaseWeight, base.weightGrams());
+        verify("Standard cost", expectedBaseWeight / 1000 * pla.getPricePerKg(), base.cost());
+        verify("Decorated time", 579.6, decorated.timeMinutes());
+        verify("Decorated material", expectedDecoratedWeight, decorated.weightGrams());
+        verify("Decorated cost", expectedDecoratedWeight / 1000 * pla.getPricePerKg(), decorated.cost());
+
         printer2.addObserver(new ConsoleNotificationObserver());
         printer2.performPrint("models/case.stl", abs, 80);
+    }
+
+    private static void verify(String label, double expected, double actual) {
+        if (Math.abs(expected - actual) > 0.000001) {
+            throw new IllegalStateException(label + ": expected " + expected + ", got " + actual);
+        }
+        System.out.println("PASS: " + label);
     }
 }
