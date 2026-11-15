@@ -1,4 +1,5 @@
 import adapter.*;
+import decorator.*;
 import factory.*;
 import builder.*;
 import observer.*;
@@ -82,6 +83,13 @@ public class main {
 
         printer1.setStrategy(new FastPrintStrategy());
         printer1.performPrint("models/bracket.stl", pla, 40);
+
+        System.out.println("\n--- DECORATOR PATTERN: CUSTOM PRINT SETTINGS ---");
+        PrintJobConfig customSettings = new FineLayerDecorator(
+                new InfillDecorator(
+                        new SupportsDecorator(new BasePrintJobConfig())));
+        printer1.setStrategy(new StandardPrintStrategy());
+        printer1.performPrint("models/benchy.stl", pla, 50, customSettings);
 
         printer2.addObserver(new ConsoleNotificationObserver());
         printer2.performPrint("models/case.stl", abs, 80);
