@@ -26,6 +26,6 @@ bin/
 
 ### VS Code ###
 .vscode/
-
+.temp
 ### Mac OS ###
 .DS_Store
