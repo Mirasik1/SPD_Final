@@ -8,16 +8,16 @@ import strategy.*;
 public class main {
     public static void main(String[] args) {
 
-        System.out.println("--- FACTORY PATTERN ---");
+        System.out.println("--- FACTORY METHOD PATTERN ---");
 
         System.out.println("--- ADAPTER PATTERN: EXTERNAL MARKETPLACE ---");
         FilamentPriceProvider prices = new FilamentPriceAdapter(
                 new ExternalPriceService("http://127.0.0.1:8000"));
 
-        Filament pla = FilamentFactory.createFilament("PLA", prices);
-        Filament petg = FilamentFactory.createFilament("PETG", prices);
-        Filament abs = FilamentFactory.createFilament("ABS", prices);
-        Filament tpu = FilamentFactory.createFilament("TPU", prices);
+        Filament pla = new PLAFactory().createFilament(prices);
+        Filament petg = new PETGFactory().createFilament(prices);
+        Filament abs = new ABSFactory().createFilament(prices);
+        Filament tpu = new TPUFactory().createFilament(prices);
 
         System.out.println(pla);
         System.out.println();
